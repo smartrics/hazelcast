@@ -16,6 +16,7 @@
 
 package com.hazelcast.spi.impl;
 
+import com.hazelcast.core.GroupListener;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.instance.GroupProperties;
@@ -36,6 +37,7 @@ import com.hazelcast.spi.EventPublishingService;
 import com.hazelcast.spi.EventRegistration;
 import com.hazelcast.spi.EventService;
 import com.hazelcast.spi.annotation.PrivateApi;
+import com.hazelcast.topic.TopicService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 import com.hazelcast.util.executor.StripedExecutor;
@@ -43,12 +45,7 @@ import com.hazelcast.util.executor.StripedRunnable;
 import com.hazelcast.util.executor.TimeoutRunnable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -254,12 +251,23 @@ public class EventServiceImpl implements EventService {
     public void publishEvent(String serviceName, Collection<EventRegistration> registrations, Object event, int orderKey) {
         final Iterator<EventRegistration> iter = registrations.iterator();
         Data eventData = null;
+        Set<String> groups = new HashSet<String>();
         while (iter.hasNext()) {
             EventRegistration registration = iter.next();
             if (!(registration instanceof Registration)) {
                 throw new IllegalArgumentException();
             }
             final Registration reg = (Registration) registration;
+            if(reg.listener instanceof GroupListener) {
+                String group = ((GroupListener) reg.listener).getGroupName();
+                if(group != null) {
+                    if(groups.contains(group)) {
+                        continue;
+                    } else {
+                        groups.add(group);
+                    }
+                }
+            }
             if (isLocal(reg)) {
                 executeLocal(serviceName, event, reg, orderKey);
             } else {
