@@ -19,10 +19,7 @@ package com.hazelcast.client.proxy;
 import com.hazelcast.client.ClientRequest;
 import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.EventHandler;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.Member;
-import com.hazelcast.core.Message;
-import com.hazelcast.core.MessageListener;
+import com.hazelcast.core.*;
 import com.hazelcast.monitor.LocalTopicStats;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.topic.client.AddMessageListenerRequest;
@@ -50,13 +47,26 @@ public class ClientTopicProxy<E> extends ClientProxy implements ITopic<E> {
     }
 
     public String addMessageListener(final MessageListener<E> listener) {
-        AddMessageListenerRequest request = new AddMessageListenerRequest(name);
+        return addMessageListener(listener, EmptyMessageEventFilter.instance);
+    }
+
+    public String addMessageListener(final MessageListener<E> listener, final MessageEventFilter<E> filter) {
+        AddMessageListenerRequest request = null;
+        if(listener instanceof GroupListener) {
+            request = new AddMessageListenerRequest(name, ((GroupListener) listener).getGroupName());
+        } else {
+            request = new AddMessageListenerRequest(name);
+        }
+
         EventHandler<PortableMessage> handler = new EventHandler<PortableMessage>() {
             public void handle(PortableMessage event) {
                 E messageObject = (E) getContext().getSerializationService().toObject(event.getMessage());
                 Member member = getContext().getClusterService().getMember(event.getUuid());
-                Message<E> message = new Message<E>(name, messageObject, event.getPublishTime(), member);
-                listener.onMessage(message);
+                // this filter is client side - not server side.
+                if(filter.shouldPublish(messageObject)) {
+                    Message<E> message = new Message<E>(name, messageObject, event.getPublishTime(), member);
+                    listener.onMessage(message);
+                }
             }
         };
         return listen(request, getKey(), handler);
@@ -89,4 +99,19 @@ public class ClientTopicProxy<E> extends ClientProxy implements ITopic<E> {
     public String toString() {
         return "ITopic{" + "name='" + getName() + '\'' + '}';
     }
+
+    private static class EmptyMessageEventFilter<E> implements MessageEventFilter<E> {
+
+        static final EmptyMessageEventFilter instance = new EmptyMessageEventFilter();
+
+        private EmptyMessageEventFilter() {
+
+        }
+
+        @Override
+        public boolean shouldPublish(E messageObject) {
+            return true;
+        }
+    }
+
 }

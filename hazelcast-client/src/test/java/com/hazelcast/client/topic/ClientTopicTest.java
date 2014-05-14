@@ -27,6 +27,7 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -40,6 +41,10 @@ public class ClientTopicTest {
     static HazelcastInstance hz;
     static HazelcastInstance server;
     static ITopic t;
+
+    abstract class MessageListenerWithGroup implements MessageListener, GroupListener {
+
+    }
 
     @Before
     public void init(){
@@ -69,5 +74,34 @@ public class ClientTopicTest {
         }
         assertTrue(latch.await(20, TimeUnit.SECONDS));
 
+    }
+
+    @Test
+    public void testListenerInGroups() throws Exception {
+
+        final CountDownLatch latch = new CountDownLatch(11);
+        MessageListener listener1 = makeListenerInGroup(latch, "group1");
+        MessageListener listener2 = makeListenerInGroup(latch, "group1");
+        t.addMessageListener(listener1);
+        t.addMessageListener(listener2);
+
+        for (int i=0; i<10; i++){
+            t.publish("naber"+i);
+        }
+        assertFalse("latch didn't timeout as expected as more than 10 onMessage invoked", latch.await(3, TimeUnit.SECONDS));
+
+    }
+
+    private MessageListener makeListenerInGroup(final CountDownLatch latch, final String group1) {
+        return new MessageListenerWithGroup() {
+            public void onMessage(Message message) {
+                latch.countDown();
+            }
+
+            @Override
+            public String getGroupName() {
+                return group1;
+            }
+        };
     }
 }
