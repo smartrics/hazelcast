@@ -353,6 +353,57 @@ public class TopicTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void addMessageListenerWithFilterToBlock() throws InterruptedException {
+        HazelcastInstance hClient = createHazelcastInstance();
+        ITopic<String> topic = hClient.getTopic("addMessageListenerWithFilter");
+        final CountDownLatch latch = new CountDownLatch(1);
+        final String message = "Hazelcast Rocks!";
+        abstract class MyFilter implements MessageEventFilter<String> {
+
+        }
+        topic.addMessageListener(new MessageListener<String>() {
+            public void onMessage(Message<String> msg) {
+                if (msg.getMessageObject().equals(message)) {
+                    latch.countDown();
+                }
+            }
+        }, new MyFilter() {
+            @Override
+            public boolean shouldPublish(String message) {
+                return false;
+            }
+        });
+        topic.publish(message);
+        assertFalse("latch didn't timeout", latch.await(3000, TimeUnit.MILLISECONDS));
+    }
+
+
+    @Test
+    public void addMessageListenerWithFilterToPass() throws InterruptedException {
+        HazelcastInstance hClient = createHazelcastInstance();
+        ITopic<String> topic = hClient.getTopic("addMessageListenerWithFilter");
+        final CountDownLatch latch = new CountDownLatch(1);
+        final String message = "Hazelcast Rocks!";
+        abstract class MyFilter implements MessageEventFilter<String> {
+
+        }
+        topic.addMessageListener(new MessageListener<String>() {
+            public void onMessage(Message<String> msg) {
+                if (msg.getMessageObject().equals(message)) {
+                    latch.countDown();
+                }
+            }
+        }, new MyFilter() {
+            @Override
+            public boolean shouldPublish(String message) {
+                return true;
+            }
+        });
+        topic.publish(message);
+        assertTrue("latch didn't timeout", latch.await(3000, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
     public void testConfigListenerRegistration() throws InterruptedException {
         Config config = new Config();
         final String name = "default";
@@ -396,10 +447,9 @@ public class TopicTest extends HazelcastTestSupport {
         final String group1 = "aGroup";
         final String group2 = "aGroup";
         final AtomicInteger counter = new AtomicInteger(0); // count of the listener invocations
-        final CountDownLatch latch = setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, counter);
+        setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, counter, 3000, TimeUnit.MILLISECONDS);
         // we have to wait for the latch to timeout as we'll never be sure whether two messages may
         // arrive if the latch is 1.
-        latch.await(3000, TimeUnit.MILLISECONDS);
         assertThat("count not matching", counter.get(), is(equalTo(1)));
     }
 
@@ -407,42 +457,26 @@ public class TopicTest extends HazelcastTestSupport {
     public void addTwoMessageListenerInTheSeparateGroups() throws InterruptedException {
         final String group1 = "aGroup";
         final String group2 = "anotherGroup";
-        final AtomicInteger counter = new AtomicInteger(0); // count of the listener invocations
-        final CountDownLatch latch = setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, counter);
-        latch.await(10000, TimeUnit.MILLISECONDS);
-        assertThat("count not matching", counter.get(), is(equalTo(2)));
+        setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, null, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void addTwoMessageListenerInTheSeparateGroupsOneOfWhichIsNull() throws InterruptedException {
         final String group1 = "aGroup";
         final String group2 = null;
-        final AtomicInteger counter = new AtomicInteger(0); // count of the listener invocations
-        final CountDownLatch latch = setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, counter);
-        latch.await(10000, TimeUnit.MILLISECONDS);
-        assertThat("count not matching", counter.get(), is(equalTo(2)));
+        setupTwoListenersInGroupsAndSendMessageToTopic(group1, group2, null, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void addTwoMessageListenerOneInANullGroupTheOtherNotInAGroup() throws InterruptedException {
         final String group = null;
-        final AtomicInteger counter = new AtomicInteger(0); // count of the listener invocations
-        final CountDownLatch latch = setupTwoListenersOneIsInAGroupAndSendMessageToTopic(group, counter);
-        // we have to wait for the latch to timeout as we'll never be sure whether two messages may
-        // arrive if the latch is 1.
-        latch.await(10000, TimeUnit.MILLISECONDS);
-        assertThat("count not matching", counter.get(), is(equalTo(2)));
+        setupTwoListenersOneIsInAGroupAndSendMessageToTopic(group, null, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void addTwoMessageListenerOneInAGroupTheOtherNotInAGroup() throws InterruptedException {
         final String group = "aGroup";
-        final AtomicInteger counter = new AtomicInteger(0); // count of the listener invocations
-        final CountDownLatch latch = setupTwoListenersOneIsInAGroupAndSendMessageToTopic(group, counter);
-        // we have to wait for the latch to timeout as we'll never be sure whether two messages may
-        // arrive if the latch is 1.
-        latch.await(10000, TimeUnit.MILLISECONDS);
-        assertThat("count not matching", counter.get(), is(equalTo(2)));
+        setupTwoListenersOneIsInAGroupAndSendMessageToTopic(group, null, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Test
@@ -621,14 +655,13 @@ public class TopicTest extends HazelcastTestSupport {
     }
 
 
-    private CountDownLatch setupTwoListenersInGroupsAndSendMessageToTopic(final String group1, final String group2, final AtomicInteger counter) {
+    private void setupTwoListenersInGroupsAndSendMessageToTopic(final String group1, final String group2, final AtomicInteger counter, long to, TimeUnit tu) throws InterruptedException {
         abstract class MessageAndGroupListener implements MessageListener<String>, GroupListener { }
-
         HazelcastInstance hazelcastInstance = createHazelcastInstance();
         ITopic<String> topic = hazelcastInstance.getTopic("addTwoMessageListenerInGroup" + group1 + "_" + group2);
         final CountDownLatch latch = new CountDownLatch(2);
         final String message = "Hazelcast Rocks!";
-        topic.addMessageListener(new  MessageAndGroupListener() {
+        String r1 = topic.addMessageListener(new  MessageAndGroupListener() {
             public void onMessage(Message<String> msg) {
                 if (msg.getMessageObject().equals(message)) {
                     latch.countDown();
@@ -640,7 +673,7 @@ public class TopicTest extends HazelcastTestSupport {
                 return group1;
             }
         });
-        topic.addMessageListener(new  MessageAndGroupListener() {
+        String r2 = topic.addMessageListener(new  MessageAndGroupListener() {
             public void onMessage(Message<String> msg) {
                 if (msg.getMessageObject().equals(message)) {
                     latch.countDown();
@@ -653,30 +686,36 @@ public class TopicTest extends HazelcastTestSupport {
             }
         });
         topic.publish(message);
-        return latch;
+        latch.await(to, tu);
+        topic.removeMessageListener(r1);
+        topic.removeMessageListener(r2);
     }
 
 
-    private CountDownLatch setupTwoListenersOneIsInAGroupAndSendMessageToTopic(final String group, final AtomicInteger counter) {
+    private void setupTwoListenersOneIsInAGroupAndSendMessageToTopic(final String group, final AtomicInteger counter, long to, TimeUnit tu) throws InterruptedException {
         abstract class MessageAndGroupListener implements MessageListener<String>, GroupListener { }
 
         HazelcastInstance hazelcastInstance = createHazelcastInstance();
         ITopic<String> topic = hazelcastInstance.getTopic("addTwoMessageListenerWithGroup_" + group);
         final CountDownLatch latch = new CountDownLatch(2);
         final String message = "Hazelcast Rocks!";
-        topic.addMessageListener(new  MessageListener<String>() {
+        String r1 = topic.addMessageListener(new  MessageListener<String>() {
             public void onMessage(Message<String> msg) {
                 if (msg.getMessageObject().equals(message)) {
                     latch.countDown();
-                    counter.incrementAndGet();
+                    if(counter != null) {
+                        counter.incrementAndGet();
+                    }
                 }
             }
         });
-        topic.addMessageListener(new  MessageAndGroupListener() {
+        String r2 = topic.addMessageListener(new  MessageAndGroupListener() {
             public void onMessage(Message<String> msg) {
                 if (msg.getMessageObject().equals(message)) {
                     latch.countDown();
-                    counter.incrementAndGet();
+                    if(counter != null) {
+                        counter.incrementAndGet();
+                    }
                 }
             }
 
@@ -685,6 +724,8 @@ public class TopicTest extends HazelcastTestSupport {
             }
         });
         topic.publish(message);
-        return latch;
+        latch.await(to, tu);
+        topic.removeMessageListener(r1);
+        topic.removeMessageListener(r2);
     }
 }

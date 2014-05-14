@@ -57,6 +57,17 @@ public interface ITopic<E> extends DistributedObject {
     String addMessageListener(MessageListener<E> listener);
 
     /**
+     * Subscribes to this topic. When someone publishes a message on this topic.
+     * onMessage() function of the given MessageListener is called if the filter.shouldPublish() returns true.
+     *
+     * @param listener
+     * @param filter
+     *
+     * @return returns registration id.
+     */
+    String addMessageListener(MessageListener<E> listener, MessageEventFilter<E> filter);
+
+    /**
      * Stops receiving messages for the given message listener. If the given listener already removed,
      * this method does nothing.
      *

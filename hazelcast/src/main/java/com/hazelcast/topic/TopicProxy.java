@@ -17,6 +17,7 @@
 package com.hazelcast.topic;
 
 import com.hazelcast.core.ITopic;
+import com.hazelcast.core.MessageEventFilter;
 import com.hazelcast.core.MessageListener;
 import com.hazelcast.monitor.LocalTopicStats;
 import com.hazelcast.nio.serialization.Data;
@@ -30,13 +31,19 @@ public class TopicProxy<E> extends TopicProxySupport implements ITopic<E> {
 
     @Override
     public void publish(E message) {
+        // TODO: optimisation - no point of serialising the message if registrations are empty or filter will exclude them.
         Data messageData = getNodeEngine().toData(message);
-        publishInternal(messageData);
+        publishInternal(message, messageData);
     }
 
     @Override
     public String addMessageListener(MessageListener<E> listener) {
-        return addMessageListenerInternal(listener);
+        return addMessageListenerInternal(listener, null);
+    }
+
+    @Override
+    public String addMessageListener(MessageListener<E> listener, MessageEventFilter<E> filter) {
+        return addMessageListenerInternal(listener, filter);
     }
 
     @Override

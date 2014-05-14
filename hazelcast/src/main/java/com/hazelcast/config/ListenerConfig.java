@@ -16,6 +16,7 @@
 
 package com.hazelcast.config;
 
+import java.awt.*;
 import java.util.EventListener;
 
 import static com.hazelcast.util.ValidationUtil.hasText;
@@ -28,8 +29,10 @@ import static com.hazelcast.util.ValidationUtil.isNotNull;
 public class ListenerConfig {
 
     protected String className = null;
+    protected String filterClassName = null;
 
     protected EventListener implementation = null;
+    protected Object filterImplementation = null;
 
     private ListenerConfigReadOnly readOnly;
 
@@ -46,12 +49,19 @@ public class ListenerConfig {
      * @throws IllegalArgumentException if className is null or an empty String.
      */
     public ListenerConfig(String className) {
-       setClassName(className);
+        setClassName(className);
+    }
+
+    public ListenerConfig(String className, String filterClassName) {
+        setClassName(className);
+        setFilterClassName(filterClassName);
     }
 
     public ListenerConfig(ListenerConfig config) {
         implementation = config.getImplementation();
         className = config.getClassName();
+        filterImplementation = config.getFilterImplementation();
+        filterClassName = config.getFilterClassName();
     }
 
     /**
@@ -61,7 +71,13 @@ public class ListenerConfig {
      * @throws  IllegalArgumentException if the implementation is null.
      */
     public ListenerConfig(EventListener implementation) {
-        this.implementation = isNotNull(implementation,"implementation");
+        this.implementation = isNotNull(implementation, "implementation");
+        this.filterImplementation = null;
+    }
+
+    public ListenerConfig(EventListener implementation, Object filterImplementation) {
+        this.implementation = isNotNull(implementation, "implementation");
+        this.filterImplementation = filterImplementation;
     }
 
     public ListenerConfig getAsReadOnly() {
@@ -82,6 +98,16 @@ public class ListenerConfig {
     }
 
     /**
+     * Returns the name of the class of the EventFilter. If no class is specified, null is returned.
+     *
+     * @return the class name of the EventFilter.
+     * @see #setFilterClassName(String)
+     */
+    public String getFilterClassName() {
+        return className;
+    }
+
+    /**
      * Sets the class name of the EventListener.
      *
      * If a implementation was set, it will be removed.
@@ -95,6 +121,21 @@ public class ListenerConfig {
     public ListenerConfig setClassName(String className) {
         this.className = hasText(className, "className");
         this.implementation = null;
+        return this;
+    }
+
+    /**
+     * overrides (if exists) the filter class name.
+     *
+     * @param className the name of the class of the EventFilter.
+     * @return the updated ListenerConfig.
+     * @throws IllegalArgumentException if className is null or an empty String.
+     * @see #setFilterImplementation(Object)
+     * @see #getFilterClassName()
+     */
+    public ListenerConfig setFilterClassName(String className) {
+        this.className = hasText(className, "className");
+        this.filterImplementation = null;
         return this;
     }
 
@@ -125,6 +166,31 @@ public class ListenerConfig {
         return this;
     }
 
+
+    /**
+     * Sets the EventListener implementation.
+     *
+     * If a className was set, it will be removed.
+     *
+     * @param implementation the EventListener implementation.
+     * @return the updated ListenerConfig.
+     * @throws IllegalArgumentException the implementation is null.
+     * @see #setClassName(String)
+     * @see #getImplementation()
+     */
+    public ListenerConfig setFilterImplementation(Object implementation) {
+        this.filterImplementation = isNotNull(implementation,"filterImplementation");
+        this.className = null;
+        return this;
+    }
+
+    /**
+     * @return the filter implementation or null if unset.
+     */
+    public Object getFilterImplementation() {
+        return filterImplementation;
+    }
+
     public boolean isIncludeValue() {
         return true;
     }
@@ -135,7 +201,8 @@ public class ListenerConfig {
 
     @Override
     public String toString() {
-        return "ListenerConfig [className=" + className + ", implementation=" + implementation + ", includeValue="
+        return "ListenerConfig [className=" + className + ", implementation=" + implementation + "filterImplementation=" + filterImplementation + ", includeValue="
                 + isIncludeValue() + ", local=" + isLocal() + "]";
     }
+
 }

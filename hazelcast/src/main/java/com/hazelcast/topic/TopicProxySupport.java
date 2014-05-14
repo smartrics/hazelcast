@@ -19,6 +19,7 @@ package com.hazelcast.topic;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.core.HazelcastInstanceAware;
+import com.hazelcast.core.MessageEventFilter;
 import com.hazelcast.core.MessageListener;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.monitor.LocalTopicStats;
@@ -74,7 +75,23 @@ abstract class TopicProxySupport extends AbstractDistributedObject<TopicService>
                 HazelcastInstanceAware hazelcastInstanceAware = (HazelcastInstanceAware) listener;
                 hazelcastInstanceAware.setHazelcastInstance(nodeEngine.getHazelcastInstance());
             }
-            addMessageListenerInternal(listener);
+
+            MessageEventFilter filter;
+            try {
+                filter = (MessageEventFilter) listenerConfig.getFilterImplementation();
+                if(filter == null && listenerConfig.getFilterClassName() != null) {
+                    filter = ClassLoaderUtil.newInstance(configClassLoader, listenerConfig.getFilterClassName());
+                }
+            } catch (Exception e) {
+                throw ExceptionUtil.rethrow(e);
+            }
+
+            if (filter instanceof HazelcastInstanceAware) {
+                HazelcastInstanceAware hazelcastInstanceAware = (HazelcastInstanceAware) filter;
+                hazelcastInstanceAware.setHazelcastInstance(nodeEngine.getHazelcastInstance());
+            }
+
+            addMessageListenerInternal(listener, filter);
         }
     }
 
@@ -82,14 +99,14 @@ abstract class TopicProxySupport extends AbstractDistributedObject<TopicService>
         return topicService.getLocalTopicStats(name);
     }
 
-    public void publishInternal(Data message) {
+    public void publishInternal(Object messageObject, Data message) {
         TopicEvent topicEvent = new TopicEvent(name, message, localMember);
         topicStats.incrementPublishes();
-        topicService.publishEvent(name, topicEvent);
+        topicService.publishEvent(name, messageObject, topicEvent);
     }
 
-    public String addMessageListenerInternal(MessageListener listener) {
-        return topicService.addMessageListener(name, listener);
+    public String addMessageListenerInternal(MessageListener listener, MessageEventFilter filter) {
+        return topicService.addMessageListener(name, listener, filter);
     }
 
     public boolean removeMessageListenerInternal(final String registrationId) {

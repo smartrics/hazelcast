@@ -21,6 +21,7 @@ import com.hazelcast.client.ClientEndpoint;
 import com.hazelcast.client.ClientEngine;
 import com.hazelcast.client.RetryableRequest;
 import com.hazelcast.client.SecureRequest;
+import com.hazelcast.core.GroupListener;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 import com.hazelcast.nio.serialization.Data;
@@ -38,6 +39,7 @@ import java.security.Permission;
 public class AddMessageListenerRequest extends CallableClientRequest
         implements Portable, SecureRequest, RetryableRequest {
 
+    private String listenerGroup;
     private String name;
 
     public AddMessageListenerRequest() {
@@ -45,6 +47,12 @@ public class AddMessageListenerRequest extends CallableClientRequest
 
     public AddMessageListenerRequest(String name) {
         this.name = name;
+        this.listenerGroup = null;
+    }
+
+    public AddMessageListenerRequest(String name, String listenerGroup) {
+        this.name = name;
+        this.listenerGroup = listenerGroup;
     }
 
     @Override
@@ -52,7 +60,8 @@ public class AddMessageListenerRequest extends CallableClientRequest
         TopicService service = getService();
         ClientEngine clientEngine = getClientEngine();
         ClientEndpoint endpoint = getEndpoint();
-        MessageListener listener = new MessageListenerImpl(endpoint, clientEngine, getCallId());
+        MessageListener listener = new MessageListenerImpl(endpoint, clientEngine, getCallId(), listenerGroup);
+
         String registrationId = service.addMessageListener(name, listener);
         endpoint.setListenerRegistration(TopicService.SERVICE_NAME, name, registrationId);
         return registrationId;
@@ -76,11 +85,13 @@ public class AddMessageListenerRequest extends CallableClientRequest
     @Override
     public void write(PortableWriter writer) throws IOException {
         writer.writeUTF("n", name);
+        writer.writeUTF("lg", listenerGroup);
     }
 
     @Override
     public void read(PortableReader reader) throws IOException {
         name = reader.readUTF("n");
+        listenerGroup = reader.readUTF("lg");
     }
 
     @Override
@@ -88,15 +99,17 @@ public class AddMessageListenerRequest extends CallableClientRequest
         return new TopicPermission(name, ActionConstants.ACTION_LISTEN);
     }
 
-    private static class MessageListenerImpl implements MessageListener {
+    private static class MessageListenerImpl implements MessageListener, GroupListener {
         private final ClientEndpoint endpoint;
         private final ClientEngine clientEngine;
         private final int callId;
+        private final String groupName;
 
-        public MessageListenerImpl(ClientEndpoint endpoint, ClientEngine clientEngine, int callId) {
+        public MessageListenerImpl(ClientEndpoint endpoint, ClientEngine clientEngine, int callId, String groupName) {
             this.endpoint = endpoint;
             this.clientEngine = clientEngine;
             this.callId = callId;
+            this.groupName = groupName;
         }
 
         @Override
@@ -108,6 +121,21 @@ public class AddMessageListenerRequest extends CallableClientRequest
             String publisherUuid = message.getPublishingMember().getUuid();
             PortableMessage portableMessage = new PortableMessage(messageData, message.getPublishTime(), publisherUuid);
             endpoint.sendEvent(portableMessage, callId);
+        }
+
+        @Override
+        public String getGroupName() {
+            return groupName;
+        }
+
+        @Override
+        public String toString() {
+            return "MessageListenerImpl@" + hashCode() + " [" +
+                    "endpoint=" + endpoint +
+                    ", clientEngine=" + clientEngine +
+                    ", callId=" + callId +
+                    ", groupName='" + groupName + '\'' +
+                    ']';
         }
     }
 }

@@ -389,6 +389,7 @@ public class QueryAdvancedTest extends HazelcastTestSupport {
     }
 
     @Test(timeout=1000*60)
+    @Category(ProblematicTest.class)
     public void testTwoMembersWithIndexesAndShutdown() {
         TestHazelcastInstanceFactory nodeFactory = createHazelcastInstanceFactory(2);
         HazelcastInstance h1 = nodeFactory.newHazelcastInstance();
