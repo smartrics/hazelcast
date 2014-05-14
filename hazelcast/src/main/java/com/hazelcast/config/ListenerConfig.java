@@ -16,7 +16,6 @@
 
 package com.hazelcast.config;
 
-import java.awt.*;
 import java.util.EventListener;
 
 import static com.hazelcast.util.ValidationUtil.hasText;
