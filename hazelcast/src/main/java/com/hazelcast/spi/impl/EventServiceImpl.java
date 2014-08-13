@@ -16,25 +16,18 @@
 
 package com.hazelcast.spi.impl;
 
+import com.hazelcast.core.GroupListener;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
-import com.hazelcast.nio.Connection;
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.Packet;
+import com.hazelcast.nio.*;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.spi.AbstractOperation;
-import com.hazelcast.spi.EventFilter;
-import com.hazelcast.spi.EventPublishingService;
-import com.hazelcast.spi.EventRegistration;
-import com.hazelcast.spi.EventService;
+import com.hazelcast.spi.*;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
@@ -43,19 +36,8 @@ import com.hazelcast.util.executor.StripedRunnable;
 import com.hazelcast.util.executor.TimeoutRunnable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EventServiceImpl implements EventService {
@@ -266,12 +248,24 @@ public class EventServiceImpl implements EventService {
     public void publishEvent(String serviceName, Collection<EventRegistration> registrations, Object event, int orderKey) {
         final Iterator<EventRegistration> iter = registrations.iterator();
         Data eventData = null;
+        Set<String> groups = new HashSet<String>();
         while (iter.hasNext()) {
             EventRegistration registration = iter.next();
             if (!(registration instanceof Registration)) {
                 throw new IllegalArgumentException();
             }
             final Registration reg = (Registration) registration;
+            if(reg.listener instanceof GroupListener) {
+                String group = getListenerGroupName(reg);
+                if(group != null) {
+                    if(groups.contains(group)) {
+                        // skip to next registration as the group has already been processed
+                        continue;
+                    } else {
+                        groups.add(group);
+                    }
+                }
+            }
             if (isLocal(reg)) {
                 executeLocal(serviceName, event, reg, orderKey);
             } else {
@@ -282,6 +276,10 @@ public class EventServiceImpl implements EventService {
                 sendEventPacket(subscriber, new EventPacket(registration.getId(), serviceName, eventData), orderKey);
             }
         }
+    }
+
+    private String getListenerGroupName(Registration reg) {
+        return ((GroupListener) reg.listener).getGroupName();
     }
 
     private void executeLocal(String serviceName, Object event, Registration reg, int orderKey) {

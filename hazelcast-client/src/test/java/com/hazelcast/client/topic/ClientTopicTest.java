@@ -20,14 +20,20 @@ import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.*;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
+import static junit.framework.TestCase.assertFalse;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastParallelClassRunner.class)
@@ -36,6 +42,10 @@ public class ClientTopicTest {
 
     static HazelcastInstance client;
     static HazelcastInstance server;
+
+    abstract class MessageListenerWithGroup implements MessageListener, GroupListener {
+
+    }
 
     @BeforeClass
     public static void init(){
@@ -85,5 +95,87 @@ public class ClientTopicTest {
         ITopic topic = client.getTopic(randomString());
 
         topic.getLocalTopicStats();
+    }
+
+    @Test
+    public void testListenerInSameGroups() throws Exception {
+        ITopic topic = client.getTopic(randomString());
+
+        final CountDownLatch latch = new CountDownLatch(11);
+        final AtomicInteger count = new AtomicInteger(0);
+        MessageListener listener1 = makeListenerInGroup(count, latch, "group1");
+        MessageListener listener2 = makeListenerInGroup(count, latch, "group1");
+        topic.addMessageListener(listener1);
+        topic.addMessageListener(listener2);
+
+        for (int i=0; i<10; i++){
+            topic.publish("naber"+i);
+        }
+        assertFalse("latch didn't timeout as expected as more than 10 onMessage invoked", latch.await(1, TimeUnit.SECONDS));
+        assertThat(count.get(), is(10));
+    }
+
+    @Test
+    public void testListenerInNullGroupHasSameBehaviourToNoGroup() throws Exception {
+        ITopic topic = client.getTopic(randomString());
+
+        final CountDownLatch latch = new CountDownLatch(20);
+        final AtomicInteger count = new AtomicInteger(0);
+        MessageListener listener1 = makeListener(count, latch);
+        MessageListener listener2 = makeListenerInGroup(count, latch, null);
+        topic.addMessageListener(listener1);
+        topic.addMessageListener(listener2);
+
+        for (int i=0; i<10; i++){
+            topic.publish("naber"+i);
+        }
+        assertTrue("latch didn't timeout as expected as more than 10 onMessage invoked", latch.await(3, TimeUnit.SECONDS));
+        assertThat(count.get(), is(20));
+    }
+
+    @Test
+    public void testListenerInDifferentGroups() throws Exception {
+        ITopic topic = client.getTopic(randomString());
+
+        final CountDownLatch latch = new CountDownLatch(30);
+        final AtomicInteger count = new AtomicInteger(0);
+        MessageListener listener = makeListener(count, latch);
+        MessageListener listener1 = makeListenerInGroup(count, latch, null);
+        MessageListener listener2 = makeListenerInGroup(count, latch, "group2");
+        topic.addMessageListener(listener);
+        topic.addMessageListener(listener1);
+        topic.addMessageListener(listener2);
+
+        for (int i=0; i<10; i++){
+            topic.publish("naber"+i);
+        }
+        assertTrue("latch did timeout as not all messages received", latch.await(3, TimeUnit.SECONDS));
+        assertThat(count.get(), is(30));
+    }
+
+
+
+    private MessageListener makeListener(final AtomicInteger count, final CountDownLatch latch) {
+        return new MessageListener() {
+            public void onMessage(Message message) {
+                count.incrementAndGet();
+                latch.countDown();
+            }
+        };
+    }
+
+
+    private MessageListener makeListenerInGroup(final AtomicInteger count, final CountDownLatch latch, final String group1) {
+        return new MessageListenerWithGroup() {
+            public void onMessage(Message message) {
+                count.incrementAndGet();
+                latch.countDown();
+            }
+
+            @Override
+            public String getGroupName() {
+                return group1;
+            }
+        };
     }
 }

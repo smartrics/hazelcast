@@ -20,10 +20,7 @@ import com.hazelcast.client.ClientRequest;
 import com.hazelcast.client.spi.ClientClusterService;
 import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.EventHandler;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.Member;
-import com.hazelcast.core.Message;
-import com.hazelcast.core.MessageListener;
+import com.hazelcast.core.*;
 import com.hazelcast.monitor.LocalTopicStats;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
@@ -56,6 +53,11 @@ public class ClientTopicProxy<E> extends ClientProxy implements ITopic<E> {
     @Override
     public String addMessageListener(final MessageListener<E> listener) {
         AddMessageListenerRequest request = new AddMessageListenerRequest(name);
+        if(listener instanceof GroupListener) {
+            request = new AddMessageListenerRequest(name, ((GroupListener) listener).getGroupName());
+        } else {
+            request = new AddMessageListenerRequest(name);
+        }
 
         EventHandler<PortableMessage> handler = new EventHandler<PortableMessage>() {
             @Override
