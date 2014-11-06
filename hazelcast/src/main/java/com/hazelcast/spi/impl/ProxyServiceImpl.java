@@ -71,7 +71,7 @@ public class ProxyServiceImpl
     }
 
     void init() {
-        nodeEngine.getEventService().registerListener(SERVICE_NAME, SERVICE_NAME, new Object());
+        nodeEngine.getEventService().registerListener(SERVICE_NAME, SERVICE_NAME, null, new Object());
     }
 
     private final ConstructorFunction<String, ProxyRegistry> registryConstructor = new ConstructorFunction<String, ProxyRegistry>() {

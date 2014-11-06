@@ -176,9 +176,9 @@ public class MultiMapService implements ManagedService, RemoteService,
         EventRegistration registration;
         final MultiMapEventFilter filter = new MultiMapEventFilter(includeValue, key);
         if (local) {
-            registration = eventService.registerLocalListener(SERVICE_NAME, name, filter, listener);
+            registration = eventService.registerLocalListener(SERVICE_NAME, name, filter, null, listener);
         } else {
-            registration = eventService.registerListener(SERVICE_NAME, name, filter, listener);
+            registration = eventService.registerListener(SERVICE_NAME, name, filter, null, listener);
         }
         return registration.getId();
     }

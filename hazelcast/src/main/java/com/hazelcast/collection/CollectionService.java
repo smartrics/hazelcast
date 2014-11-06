@@ -78,6 +78,7 @@ public abstract class CollectionService implements ManagedService, RemoteService
         ItemEvent itemEvent = new ItemEvent(event.name, event.eventType, nodeEngine.toObject(event.data),
                 nodeEngine.getClusterService().getMember(event.caller));
         if (event.eventType.equals(ItemEventType.ADDED)) {
+            System.out.println("ADD [cs]" + Thread.currentThread().getName());
             listener.itemAdded(itemEvent);
         } else {
             listener.itemRemoved(itemEvent);

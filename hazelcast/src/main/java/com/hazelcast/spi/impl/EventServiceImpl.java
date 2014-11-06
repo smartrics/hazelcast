@@ -84,26 +84,26 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventRegistration registerLocalListener(String serviceName, String topic, Object listener) {
-        return registerListenerInternal(serviceName, topic, new EmptyFilter(), listener, true);
+    public EventRegistration registerLocalListener(String serviceName, String topic, String group, Object listener) {
+        return registerListenerInternal(serviceName, topic, new EmptyFilter(), group, listener, true);
     }
 
     @Override
-    public EventRegistration registerLocalListener(String serviceName, String topic, EventFilter filter, Object listener) {
-        return registerListenerInternal(serviceName, topic, filter, listener, true);
+    public EventRegistration registerLocalListener(String serviceName, String topic, EventFilter filter, String group, Object listener) {
+        return registerListenerInternal(serviceName, topic, filter, group, listener, true);
     }
 
     @Override
-    public EventRegistration registerListener(String serviceName, String topic, Object listener) {
-        return registerListenerInternal(serviceName, topic, new EmptyFilter(), listener, false);
+    public EventRegistration registerListener(String serviceName, String topic, String group, Object listener) {
+        return registerListenerInternal(serviceName, topic, new EmptyFilter(), group, listener, false);
     }
 
     @Override
-    public EventRegistration registerListener(String serviceName, String topic, EventFilter filter, Object listener) {
-        return registerListenerInternal(serviceName, topic, filter, listener, false);
+    public EventRegistration registerListener(String serviceName, String topic, EventFilter filter, String group, Object listener) {
+        return registerListenerInternal(serviceName, topic, filter, group, listener, false);
     }
 
-    private EventRegistration registerListenerInternal(String serviceName, String topic, EventFilter filter,
+    private EventRegistration registerListenerInternal(String serviceName, String topic, EventFilter filter, String group,
                                                        Object listener, boolean localOnly) {
         if (listener == null) {
             throw new IllegalArgumentException("Listener required!");
@@ -113,7 +113,7 @@ public class EventServiceImpl implements EventService {
         }
         EventServiceSegment segment = getSegment(serviceName, true);
         Registration reg = new Registration(UUID.randomUUID().toString(), serviceName, topic, filter,
-                nodeEngine.getThisAddress(), listener, localOnly);
+                nodeEngine.getThisAddress(), group, listener, localOnly);
         if (segment.addRegistration(topic, reg)) {
             if (!localOnly) {
                 invokeRegistrationOnOtherNodes(serviceName, reg);
@@ -223,6 +223,21 @@ public class EventServiceImpl implements EventService {
         final EventServiceSegment segment = getSegment(serviceName, false);
         if (segment != null) {
             final Collection<Registration> registrations = segment.getRegistrations(topic, false);
+            HashSet processed = new HashSet();
+            System.out.println("REG " + Thread.currentThread().getName() + " reg here");
+            for(Registration r : registrations) {
+                if(r.listener instanceof GroupListener) {
+                    GroupListener gl = (GroupListener) r.listener;
+                    String n = gl.getGroupName();
+                    if(n != null) {
+                        if (processed.contains(n)) {
+                            boolean res = registrations.remove(r);
+                        } else {
+                            processed.add(n);
+                        }
+                    }
+                }
+            }
             return registrations != null && !registrations.isEmpty()
                     ? Collections.<EventRegistration>unmodifiableCollection(registrations)
                     : Collections.<EventRegistration>emptySet();
@@ -259,7 +274,7 @@ public class EventServiceImpl implements EventService {
                 String group = getListenerGroupName(reg);
                 if(group != null) {
                     if(groups.contains(group)) {
-                        // skip to next registration as the group has already been processed
+                        logger.finest("Skip registration dispatch an event for a listener in this group as the has already been processed [group=" + group + "]");
                         continue;
                     } else {
                         groups.add(group);
@@ -600,6 +615,7 @@ public class EventServiceImpl implements EventService {
         private String topic;
         private EventFilter filter;
         private Address subscriber;
+        private String group;
         private transient boolean localOnly;
         private transient Object listener;
 
@@ -607,7 +623,7 @@ public class EventServiceImpl implements EventService {
         }
 
         public Registration(String id, String serviceName, String topic,
-                            EventFilter filter, Address subscriber, Object listener, boolean localOnly) {
+                            EventFilter filter, Address subscriber, String group, Object listener, boolean localOnly) {
             this.filter = filter;
             this.id = id;
             this.listener = listener;
@@ -615,6 +631,7 @@ public class EventServiceImpl implements EventService {
             this.topic = topic;
             this.subscriber = subscriber;
             this.localOnly = localOnly;
+            this.group = maybeListenerGroup(group);
         }
 
         @Override
@@ -651,6 +668,13 @@ public class EventServiceImpl implements EventService {
             if (subscriber != null ? !subscriber.equals(that.subscriber) : that.subscriber != null) return false;
 
             return true;
+        }
+
+        private String maybeListenerGroup(String group) {
+            if(listener instanceof GroupListener) {
+                return ((GroupListener) listener).getGroupName();
+            }
+            return group;
         }
 
         @Override

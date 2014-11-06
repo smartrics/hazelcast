@@ -31,6 +31,8 @@ public class ListenerConfig {
 
     protected EventListener implementation = null;
 
+    protected String group;
+
     private ListenerConfigReadOnly readOnly;
 
     /**
@@ -122,6 +124,15 @@ public class ListenerConfig {
     public ListenerConfig setImplementation(EventListener implementation) {
         this.implementation = isNotNull(implementation,"implementation");
         this.className = null;
+        return this;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public ListenerConfig setGroup(String group) {
+        this.group = group;
         return this;
     }
 

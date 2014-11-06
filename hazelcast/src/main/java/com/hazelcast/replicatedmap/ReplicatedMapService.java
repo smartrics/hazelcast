@@ -96,7 +96,7 @@ public class ReplicatedMapService
         this.config = nodeEngine.getConfig();
         this.eventService = nodeEngine.getEventService();
         this.executionService = nodeEngine.getExecutionService();
-        this.eventRegistration = eventService.registerListener(SERVICE_NAME, EVENT_TOPIC_NAME, new ReplicationListener());
+        this.eventRegistration = eventService.registerListener(SERVICE_NAME, EVENT_TOPIC_NAME, null, new ReplicationListener());
     }
 
     @Override
@@ -179,7 +179,7 @@ public class ReplicatedMapService
     }
 
     public String addEventListener(EventListener entryListener, EventFilter eventFilter, String mapName) {
-        EventRegistration registration = eventService.registerLocalListener(SERVICE_NAME, mapName, eventFilter, entryListener);
+        EventRegistration registration = eventService.registerLocalListener(SERVICE_NAME, mapName, eventFilter, null, entryListener);
         return registration.getId();
     }
 

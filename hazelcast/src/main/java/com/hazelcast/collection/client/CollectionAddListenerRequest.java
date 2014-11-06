@@ -49,12 +49,15 @@ public class CollectionAddListenerRequest extends CallableClientRequest implemen
 
     private String serviceName;
 
+    private String group;
+
     public CollectionAddListenerRequest() {
     }
 
-    public CollectionAddListenerRequest(String name, boolean includeValue) {
+    public CollectionAddListenerRequest(String name, boolean includeValue, String group) {
         this.name = name;
         this.includeValue = includeValue;
+        this.group = group;
     }
 
     @Override
@@ -85,7 +88,7 @@ public class CollectionAddListenerRequest extends CallableClientRequest implemen
         };
         final EventService eventService = clientEngine.getEventService();
         final CollectionEventFilter filter = new CollectionEventFilter(includeValue);
-        final EventRegistration registration = eventService.registerListener(getServiceName(), name, filter, listener);
+        final EventRegistration registration = eventService.registerListener(getServiceName(), name, filter, group, listener);
         final String registrationId = registration.getId();
         endpoint.setListenerRegistration(getServiceName(), name, registrationId);
         return registrationId;

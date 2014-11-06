@@ -57,7 +57,7 @@ public class AddMessageListenerRequest extends CallableClientRequest
         ClientEngine clientEngine = getClientEngine();
         ClientEndpoint endpoint = getEndpoint();
         MessageListener listener = new MessageListenerImpl(endpoint, clientEngine, getCallId(), listenerGroup);
-        String registrationId = service.addMessageListener(name, listener);
+        String registrationId = service.addMessageListener(name, listener, listenerGroup);
         endpoint.setListenerRegistration(TopicService.SERVICE_NAME, name, registrationId);
         return registrationId;
     }

@@ -1099,13 +1099,13 @@ public final class ClusterServiceImpl implements ClusterService, ConnectionListe
             lock.lock();
             try {
                 ((InitialMembershipListener) listener).init(new InitialMembershipEvent(getClusterProxy(), getMembers()));
-                final EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, SERVICE_NAME, listener);
+                final EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, SERVICE_NAME, null, listener);
                 return registration.getId();
             } finally {
                 lock.unlock();
             }
         } else {
-            final EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, SERVICE_NAME, listener);
+            final EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, SERVICE_NAME, null, listener);
             return registration.getId();
         }
     }

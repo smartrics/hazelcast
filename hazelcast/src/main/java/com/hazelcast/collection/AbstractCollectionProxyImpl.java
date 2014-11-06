@@ -190,11 +190,14 @@ public abstract class AbstractCollectionProxyImpl<S extends RemoteService, E> ex
         }
         return list;
     }
-
     public String addItemListener(ItemListener<E> listener, boolean includeValue) {
+        return addItemListener(listener, includeValue, null);
+    }
+
+    public String addItemListener(ItemListener<E> listener, boolean includeValue, String group) {
         final EventService eventService = getNodeEngine().getEventService();
         final CollectionEventFilter filter = new CollectionEventFilter(includeValue);
-        final EventRegistration registration = eventService.registerListener(getServiceName(), name, filter, listener);
+        final EventRegistration registration = eventService.registerListener(getServiceName(), name, filter, group, listener);
         return registration.getId();
     }
 

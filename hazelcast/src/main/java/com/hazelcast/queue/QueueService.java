@@ -197,6 +197,7 @@ public class QueueService implements ManagedService, MigrationAwareService, Tran
         ItemEvent itemEvent = new ItemEvent(event.name, event.eventType, item,
                 nodeEngine.getClusterService().getMember(event.caller));
         if (event.eventType.equals(ItemEventType.ADDED)) {
+            System.out.println("ADD [QS]" + Thread.currentThread().getName());
             listener.itemAdded(itemEvent);
         } else {
             listener.itemRemoved(itemEvent);
@@ -214,12 +215,15 @@ public class QueueService implements ManagedService, MigrationAwareService, Tran
         containerMap.remove(name);
         nodeEngine.getEventService().deregisterAllListeners(SERVICE_NAME, name);
     }
-
     public String addItemListener(String name, ItemListener listener, boolean includeValue) {
+        return addItemListener(name, listener, includeValue, null);
+    }
+
+    public String addItemListener(String name, ItemListener listener, boolean includeValue, String group) {
         EventService eventService = nodeEngine.getEventService();
         QueueEventFilter filter = new QueueEventFilter(includeValue);
         EventRegistration registration = eventService.registerListener(
-                QueueService.SERVICE_NAME, name, filter, listener);
+                QueueService.SERVICE_NAME, name, filter, group, listener);
         return registration.getId();
     }
 

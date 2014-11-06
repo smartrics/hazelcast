@@ -132,7 +132,7 @@ public class AbstractClientCollectionProxy<E> extends ClientProxy implements ICo
     }
 
     public String addItemListener(final ItemListener<E> listener, final boolean includeValue) {
-        final CollectionAddListenerRequest request = new CollectionAddListenerRequest(getName(), includeValue);
+        final CollectionAddListenerRequest request = new CollectionAddListenerRequest(getName(), includeValue, null);
         request.setServiceName(getServiceName());
         EventHandler<PortableItemEvent> eventHandler = new EventHandler<PortableItemEvent>() {
             public void handle(PortableItemEvent portableItemEvent) {

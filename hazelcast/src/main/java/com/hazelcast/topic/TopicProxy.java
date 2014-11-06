@@ -35,8 +35,13 @@ public class TopicProxy<E> extends TopicProxySupport implements ITopic<E> {
     }
 
     @Override
+    public String addMessageListener(MessageListener<E> listener, String group) {
+        return addMessageListenerInternal(listener, group);
+    }
+
+    @Override
     public String addMessageListener(MessageListener<E> listener) {
-        return addMessageListenerInternal(listener);
+        return addMessageListenerInternal(listener, null);
     }
 
     @Override

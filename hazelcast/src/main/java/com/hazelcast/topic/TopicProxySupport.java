@@ -69,7 +69,7 @@ abstract class TopicProxySupport extends AbstractDistributedObject<TopicService>
             HazelcastInstanceAware hazelcastInstanceAware = (HazelcastInstanceAware) listener;
             hazelcastInstanceAware.setHazelcastInstance(nodeEngine.getHazelcastInstance());
         }
-        addMessageListenerInternal(listener);
+        addMessageListenerInternal(listener, listenerConfig.getGroup());
     }
 
     private MessageListener loadListener(ListenerConfig listenerConfig) {
@@ -94,8 +94,8 @@ abstract class TopicProxySupport extends AbstractDistributedObject<TopicService>
         topicService.publishEvent(name, topicEvent);
     }
 
-    public String addMessageListenerInternal(MessageListener listener) {
-        return topicService.addMessageListener(name, listener);
+    public String addMessageListenerInternal(MessageListener listener, String group) {
+        return topicService.addMessageListener(name, listener, group);
     }
 
     public boolean removeMessageListenerInternal(final String registrationId) {

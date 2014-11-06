@@ -364,7 +364,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
     String addClientListener(ClientListener clientListener) {
         EventService eventService = nodeEngine.getEventService();
         EventRegistration registration = eventService
-                .registerLocalListener(SERVICE_NAME, SERVICE_NAME, clientListener);
+                .registerLocalListener(SERVICE_NAME, SERVICE_NAME, null, clientListener);
         return registration.getId();
     }
 

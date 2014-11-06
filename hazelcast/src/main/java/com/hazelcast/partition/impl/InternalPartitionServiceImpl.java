@@ -1147,7 +1147,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     @Override
     public String addMigrationListener(MigrationListener listener) {
         EventService eventService = nodeEngine.getEventService();
-        EventRegistration registration = eventService.registerListener(SERVICE_NAME, SERVICE_NAME, listener);
+        EventRegistration registration = eventService.registerListener(SERVICE_NAME, SERVICE_NAME, null, listener);
         return registration.getId();
     }
 

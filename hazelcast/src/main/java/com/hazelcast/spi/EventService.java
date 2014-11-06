@@ -26,13 +26,13 @@ public interface EventService {
 
     int getEventQueueSize();
 
-    EventRegistration registerLocalListener(String serviceName, String topic, Object listener);
+    EventRegistration registerLocalListener(String serviceName, String topic, String group, Object listener);
 
-    EventRegistration registerLocalListener(String serviceName, String topic, EventFilter filter, Object listener);
+    EventRegistration registerLocalListener(String serviceName, String topic, EventFilter filter, String group, Object listener);
 
-    EventRegistration registerListener(String serviceName, String topic, Object listener);
+    EventRegistration registerListener(String serviceName, String topic, String group, Object listener);
 
-    EventRegistration registerListener(String serviceName, String topic, EventFilter filter, Object listener);
+    EventRegistration registerListener(String serviceName, String topic, EventFilter filter, String group, Object listener);
 
     boolean deregisterListener(String serviceName, String topic, Object id);
 

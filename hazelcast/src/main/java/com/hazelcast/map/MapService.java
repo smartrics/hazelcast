@@ -764,17 +764,17 @@ public class MapService implements ManagedService, MigrationAwareService,
     }
 
     public String addLocalEventListener(EntryListener entryListener, String mapName) {
-        EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, mapName, entryListener);
+        EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, mapName, null, entryListener);
         return registration.getId();
     }
 
     public String addLocalEventListener(EntryListener entryListener, EventFilter eventFilter, String mapName) {
-        EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, mapName, eventFilter, entryListener);
+        EventRegistration registration = nodeEngine.getEventService().registerLocalListener(SERVICE_NAME, mapName, eventFilter, null, entryListener);
         return registration.getId();
     }
 
     public String addEventListener(EntryListener entryListener, EventFilter eventFilter, String mapName) {
-        EventRegistration registration = nodeEngine.getEventService().registerListener(SERVICE_NAME, mapName, eventFilter, entryListener);
+        EventRegistration registration = nodeEngine.getEventService().registerListener(SERVICE_NAME, mapName, eventFilter, null, entryListener);
         return registration.getId();
     }
 

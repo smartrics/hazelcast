@@ -147,8 +147,8 @@ public class TopicService implements ManagedService, RemoteService, EventPublish
         eventService.publishEvent(TopicService.SERVICE_NAME, registrations, event, name.hashCode());
     }
 
-    public String addMessageListener(String name, MessageListener listener) {
-        EventRegistration eventRegistration = eventService.registerListener(TopicService.SERVICE_NAME, name, listener);
+    public String addMessageListener(String name, MessageListener listener, String group) {
+        EventRegistration eventRegistration = eventService.registerListener(TopicService.SERVICE_NAME, name, group, listener);
         return eventRegistration.getId();
     }
 
